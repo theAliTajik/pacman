@@ -5,32 +5,107 @@ import sys
 pygame.init()
 
 # Game constants
-SCREEN_WIDTH, SCREEN_HEIGHT = 480, 480
+SCREEN_WIDTH, SCREEN_HEIGHT = 800, 480
+CELL_SIZE = 20
 PACMAN_SIZE = 20
-PACMAN_SPEED = 5
+PACMAN_SPEED = 0.000001
 BACKGROUND_COLOR = (0, 0, 0)
 PELLET_COLOR = (255, 255, 255)
+WALL_COLOR = (0, 0, 255)
 PELLET_SIZE = 5
+
+# Level design: 0 = path, 1 = wall
+LEVEL = [
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+]
 
 # Set up the display
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Pac-Man")
 
-# Load Pac-Man image
-pacman_img = pygame.image.load("Pac_.png")
-pacman_img = pygame.transform.scale(pacman_img, (PACMAN_SIZE, PACMAN_SIZE))
+class PacMan(pygame.sprite.Sprite):
+    def __init__(self, image_path, position):
+        super().__init__()
+        self.image = pygame.image.load(image_path)
+        self.image = pygame.transform.scale(self.image, (PACMAN_SIZE, PACMAN_SIZE))
+        self.rect = self.image.get_rect()
+        self.rect.topleft = position
+        self.speed = PACMAN_SPEED
+        self.direction = None
+        self.queued_direction = None
 
-# Pac-Man starting position
-pacman_x, pacman_y = SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2
+    def set_direction(self, new_direction):
+        if self.can_move(new_direction):
+            self.direction = new_direction
+        else:
+            self.queued_direction = new_direction
 
-# Movement variables
-move_x, move_y = 0, 0
+    def can_move(self, direction):
+        grid_x, grid_y = self.rect.x // CELL_SIZE, self.rect.y // CELL_SIZE
+        dx, dy = 0, 0
+        if direction == 'LEFT':
+            dx = -1
+        elif direction == 'RIGHT':
+            dx = 1
+        elif direction == 'UP':
+            dy = -1
+        elif direction == 'DOWN':
+            dy = 1
+
+        next_grid_x, next_grid_y = grid_x + dx, grid_y + dy
+        return 0 <= next_grid_x < len(LEVEL[0]) and 0 <= next_grid_y < len(LEVEL) and LEVEL[next_grid_y][next_grid_x] == 0
+
+    def update(self):
+        if self.direction is None:
+            return
+
+        if self.queued_direction and self.can_move(self.queued_direction):
+            self.direction = self.queued_direction
+            self.queued_direction = None
+
+        if self.can_move(self.direction):
+            dx, dy = 0, 0
+            if self.direction == 'LEFT':
+                dx = -1
+            elif self.direction == 'RIGHT':
+                dx = 1
+            elif self.direction == 'UP':
+                dy = -1
+            elif self.direction == 'DOWN':
+                dy = 1
+            
+            self.rect.x += dx * CELL_SIZE
+            self.rect.y += dy * CELL_SIZE
 
 # Pellets
 pellets = []
-for i in range(0, SCREEN_WIDTH, PACMAN_SIZE):
-    for j in range(0, SCREEN_HEIGHT, PACMAN_SIZE):
-        pellets.append((i, j))
+# Calculate the offset needed to center the pellet in the cell
+offset = (CELL_SIZE - PELLET_SIZE) // 2
+# Apply the offset to each pellet's position
+pellets = [(x * CELL_SIZE + offset, y * CELL_SIZE + offset) for y, row in enumerate(LEVEL) for x, cell in enumerate(row) if cell == 0]
+
+
+pacman = PacMan("Pac_Man.png", (CELL_SIZE, CELL_SIZE))
 
 # Main game loop
 running = True
@@ -40,39 +115,37 @@ while running:
             running = False
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_LEFT:
-                move_x = -PACMAN_SPEED
-                move_y = 0
-            if event.key == pygame.K_RIGHT:
-                move_x = PACMAN_SPEED
-                move_y = 0
-            if event.key == pygame.K_UP:
-                move_x = 0
-                move_y = -PACMAN_SPEED
-            if event.key == pygame.K_DOWN:
-                move_x = 0
-                move_y = PACMAN_SPEED
+                pacman.set_direction('LEFT')
+            elif event.key == pygame.K_RIGHT:
+                pacman.set_direction('RIGHT')
+            elif event.key == pygame.K_UP:
+                pacman.set_direction('UP')
+            elif event.key == pygame.K_DOWN:
+                pacman.set_direction('DOWN')
 
-    # Update Pac-Man's position
-    pacman_x += move_x
-    pacman_y += move_y
-
-    # Prevent Pac-Man from moving outside the screen
-    pacman_x = max(0, min(pacman_x, SCREEN_WIDTH - PACMAN_SIZE))
-    pacman_y = max(0, min(pacman_y, SCREEN_HEIGHT - PACMAN_SIZE))
+    pacman.update()
 
     # Collision detection for pellets
-    pacman_rect = pygame.Rect(pacman_x, pacman_y, PACMAN_SIZE, PACMAN_SIZE)
-    pellets = [pellet for pellet in pellets if not pacman_rect.collidepoint(pellet[0] + PELLET_SIZE // 2, pellet[1] + PELLET_SIZE // 2)]
+    pellets = [pellet for pellet in pellets if not pacman.rect.collidepoint(pellet[0] + PELLET_SIZE // 2, pellet[1] + PELLET_SIZE // 2)]
 
     # Drawing
     screen.fill(BACKGROUND_COLOR)
-    screen.blit(pacman_img, (pacman_x, pacman_y))
 
+    # Draw walls
+    for y, row in enumerate(LEVEL):
+        for x, cell in enumerate(row):
+            if cell == 1:
+                pygame.draw.rect(screen, WALL_COLOR, (x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE))
+
+    # Draw pellets
     for pellet in pellets:
         pygame.draw.rect(screen, PELLET_COLOR, (pellet[0], pellet[1], PELLET_SIZE, PELLET_SIZE))
 
+    # Draw Pac-Man using the sprite
+    screen.blit(pacman.image, pacman.rect)
+
     pygame.display.flip()
-    pygame.time.Clock().tick(30)
+    pygame.time.Clock().tick(20)
 
 pygame.quit()
 sys.exit()
